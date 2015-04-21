@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		19015C921AE462000088005C /* mem_alloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19015C901AE462000088005C /* mem_alloc.cpp */; };
+		19015C961AE46C560088005C /* socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19015C941AE46C560088005C /* socket.cpp */; };
+		19A1D7251AE170F800774A27 /* RedBlackTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19A1D7221AE170F800774A27 /* RedBlackTree.cpp */; };
+		19AC4EB01AE699EA00E1103D /* cache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19AC4EAE1AE699EA00E1103D /* cache.cpp */; };
 		F1ABCE921AE03DF6000BA342 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1ABCE911AE03DF6000BA342 /* main.cpp */; };
 		F1ABCE9A1AE03E03000BA342 /* http_parser_cpp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1ABCE991AE03E03000BA342 /* http_parser_cpp.cpp */; };
 		F1ABCEA01AE06B5C000BA342 /* httplib.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F1ABCE9E1AE06B5C000BA342 /* httplib.cpp */; };
@@ -26,6 +30,16 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		19015C901AE462000088005C /* mem_alloc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = mem_alloc.cpp; sourceTree = "<group>"; };
+		19015C911AE462000088005C /* mem_alloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mem_alloc.h; sourceTree = "<group>"; };
+		19015C931AE468040088005C /* misc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = misc.h; sourceTree = "<group>"; };
+		19015C941AE46C560088005C /* socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = socket.cpp; sourceTree = "<group>"; };
+		19015C951AE46C560088005C /* socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = socket.h; sourceTree = "<group>"; };
+		190F117C1AE567A800339EC1 /* message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = message.h; sourceTree = "<group>"; };
+		19A1D7221AE170F800774A27 /* RedBlackTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RedBlackTree.cpp; sourceTree = "<group>"; };
+		19A1D7231AE170F800774A27 /* RedBlackTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RedBlackTree.h; sourceTree = "<group>"; };
+		19AC4EAE1AE699EA00E1103D /* cache.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cache.cpp; sourceTree = "<group>"; };
+		19AC4EAF1AE699EA00E1103D /* cache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cache.h; sourceTree = "<group>"; };
 		F1ABCE8E1AE03DF6000BA342 /* HttpProxy */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = HttpProxy; sourceTree = BUILT_PRODUCTS_DIR; };
 		F1ABCE911AE03DF6000BA342 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		F1ABCE981AE03E03000BA342 /* http_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = http_parser.h; sourceTree = "<group>"; };
@@ -66,6 +80,9 @@
 		F1ABCE901AE03DF6000BA342 /* HttpProxy */ = {
 			isa = PBXGroup;
 			children = (
+				19A1D7221AE170F800774A27 /* RedBlackTree.cpp */,
+				19A1D7231AE170F800774A27 /* RedBlackTree.h */,
+				19015C931AE468040088005C /* misc.h */,
 				F1ABCEA11AE0A2AF000BA342 /* md5.cpp */,
 				F1ABCEA21AE0A2AF000BA342 /* md5.h */,
 				F1ABCE9E1AE06B5C000BA342 /* httplib.cpp */,
@@ -73,6 +90,13 @@
 				F1ABCE981AE03E03000BA342 /* http_parser.h */,
 				F1ABCE991AE03E03000BA342 /* http_parser_cpp.cpp */,
 				F1ABCE911AE03DF6000BA342 /* main.cpp */,
+				19015C941AE46C560088005C /* socket.cpp */,
+				19015C951AE46C560088005C /* socket.h */,
+				190F117C1AE567A800339EC1 /* message.h */,
+				19015C901AE462000088005C /* mem_alloc.cpp */,
+				19015C911AE462000088005C /* mem_alloc.h */,
+				19AC4EAE1AE699EA00E1103D /* cache.cpp */,
+				19AC4EAF1AE699EA00E1103D /* cache.h */,
 			);
 			path = HttpProxy;
 			sourceTree = "<group>";
@@ -135,8 +159,12 @@
 			files = (
 				F1ABCEA01AE06B5C000BA342 /* httplib.cpp in Sources */,
 				F1ABCE9A1AE03E03000BA342 /* http_parser_cpp.cpp in Sources */,
+				19A1D7251AE170F800774A27 /* RedBlackTree.cpp in Sources */,
+				19015C921AE462000088005C /* mem_alloc.cpp in Sources */,
 				F1ABCEA31AE0A2AF000BA342 /* md5.cpp in Sources */,
 				F1ABCE921AE03DF6000BA342 /* main.cpp in Sources */,
+				19AC4EB01AE699EA00E1103D /* cache.cpp in Sources */,
+				19015C961AE46C560088005C /* socket.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,6 +288,7 @@
 				F1ABCE971AE03DF6000BA342 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

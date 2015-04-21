@@ -2265,8 +2265,7 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
 
 int
 http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
-                      struct http_parser_url *u)
-{
+                      struct http_parser_url *u) {
   enum state s;
   const char *p;
   enum http_parser_url_fields uf, old_uf;

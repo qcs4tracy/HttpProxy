@@ -7,25 +7,23 @@
 #include <map>
 #include <vector>
 #include <deque>
-
+#include "socket.h"
 
 // forward decl
 struct in_addr;
 
-namespace httplib
-{
-
+namespace httplib {
 
 class Response;
 
 // Helper Functions
-void BailOnSocketError( const char* context );
-struct in_addr *atoaddr( const char* address);
+void BailOnSocketError(const char* context);
+struct in_addr *atoaddr(const char* address);
 
 
-typedef void (*ResponseBegin_CB)( const Response* r, void* userdata );
-typedef void (*ResponseData_CB)( const Response* r, void* userdata, const unsigned char* data, int numbytes );
-typedef void (*ResponseComplete_CB)( const Response* r, void* userdata );
+typedef void (*ResponseBegin_CB)(const Response* r, void* userdata);
+typedef void (*ResponseData_CB)(const Response* r, void* userdata, const char* data, size_t numbytes);
+typedef void (*ResponseComplete_CB)(const Response* r, void* userdata);
 
 
 // HTTP status codes
@@ -93,16 +91,15 @@ enum {
 
 
 // Exception class
-
-class Wobbly
+class Wobbly : public exception
 {
 public:
-	Wobbly( const char* fmt, ... );
-	const char* what() const
-		{ return m_Message; }
+    Wobbly(const char* fmt, ...);
+    virtual ~Wobbly() { delete _msg; }
+    virtual const char* what() const _NOEXCEPT { return _msg->c_str(); }
+    
 protected:
-	enum { MAXLEN=256 };
-	char m_Message[ MAXLEN ];
+    string *_msg;
 };
 
 
@@ -114,13 +111,14 @@ protected:
 // responses.
 // ------------------------------------------------
 
-class Connection
-{
+class Connection {
+    
 	friend class Response;
 public:
 	// doesn't connect immediately
-	Connection( const char* host, int port );
-	~Connection();
+	Connection(const char* host, int16_t port);
+    Connection(const string &host, int16_t port);
+	virtual ~Connection();
 
 	// Set up the response handling callbacks. These will be invoked during
 	// calls to pump().
@@ -159,8 +157,10 @@ public:
 	// url is only path part: eg  "/index.html"
 	// headers is array of name/value pairs, terminated by a null-ptr
 	// body & bodysize specify body data of request (eg values for a form)
-	void request( const char* method, const char* url, const char* headers[]=0,
-		const unsigned char* body=0, int bodysize=0 );
+    void request(const string &method, const string &url);
+    void appendBody(const char*body, size_t size);
+    void sendRequest();
+    
 
 	// ---------------------------
 	// low-level request interface
@@ -169,18 +169,15 @@ public:
 	// begin request
 	// method is "GET", "POST" etc...
 	// url is only path part: eg  "/index.html"
-	void putrequest( const char* method, const char* url );
+	void putRequest(const char* method, const char* url);
 
 	// Add a header to the request (call after putrequest() )
 	void addHeader(const std::string &header, int numericvalue );	// alternate version
     void addHeader(const std::string &header, const std::string &value);
+    void addHeaders(const std::map<std::string, std::string> headers);
 
 	// Finished adding headers, issue the request.
 	void sendHeader();
-
-	// send body data if any.
-	// To be called after sendHeader()
-	void send( const unsigned char* buf, size_t numbytes );
 
 protected:
 	// some bits of implementation exposed to Response class
@@ -194,26 +191,24 @@ protected:
 private:
 	enum { IDLE, REQ_STARTED, REQ_SENT } m_State;
 	std::string m_Host;
-	int m_Port;
-	int m_Sock;
-	std::vector<std::string> m_Buffer;	// lines of request
+	int16_t m_Port;
+    const char *_body = NULL;
+    size_t _body_size = 0;
+    TCPSocket _sock;
+    map<string, string> headers;
+    
+	string request_line;	// request line
 	std::deque<Response*> m_Outstanding;	// responses for outstanding requests
 };
 
-
-
-
-
-
+    
 //-------------------------------------------------
-// Response
-//
+// Response:
 // Handles parsing of response data.
 // ------------------------------------------------
 
-
-class Response
-{
+class Response {
+    
 	friend class Connection;
 public:
 
@@ -231,20 +226,21 @@ public:
 	// true if connection is expected to close after this response.
 	bool willclose() const { return m_WillClose; }
     
-protected:
-	// interface used by Connection
+    const string &getStatusLine() const { return stat_line; }
+    const std::map<std::string, std::string> &getHeaders() const { return m_Headers; }
 
+protected:
 	// only Connection creates Responses.
-	Response( const char* method, Connection& conn );
+	Response(const char* method, Connection& conn);
 
 	// pump some data in for processing.
 	// Returns the number of bytes used.
 	// Will always return 0 when response is complete.
-	int pump( const unsigned char* data, int datasize );
+	size_t pump(const char* data, size_t datasize);
 
 	// tell response that connection has closed
-	void notifyconnectionclosed();
-
+	void notifyConnectionClosed();
+    
 private:
 	enum {
 		STATUSLINE,		// start here. status line is first line of response.
@@ -260,6 +256,7 @@ private:
 	std::string m_Method;		// req method: "GET", "POST" etc...
 
 	// status line
+    std::string stat_line;
 	std::string	m_VersionString;	// HTTP-Version
 	int	m_Version;			// 10: HTTP/1.0    11: HTTP/1.x (where x>=1)
 	int m_Status;			// Status-Code
@@ -277,15 +274,14 @@ private:
 	std::string m_LineBuf;		// line accumulation for states that want it
 	std::string m_HeaderAccum;	// accumulation buffer for headers
 
-
 	void FlushHeader();
-	void ProcessStatusLine( std::string const& line );
-	void ProcessHeaderLine( std::string const& line );
-	void ProcessTrailerLine( std::string const& line );
-	void ProcessChunkLenLine( std::string const& line );
+	void ProcessStatusLine(std::string const& line);
+	void ProcessHeaderLine(std::string const& line);
+	void ProcessTrailerLine(std::string const& line);
+	void ProcessChunkLenLine(std::string const& line);
 
-	int ProcessDataChunked( const unsigned char* data, int count );
-	int ProcessDataNonChunked( const unsigned char* data, int count );
+	size_t ProcessDataChunked(const char* data, size_t count );
+	size_t ProcessDataNonChunked(const char* data, size_t count );
 
 	void BeginBody();
 	bool CheckClose();
@@ -294,9 +290,9 @@ private:
 
 
 
-}	// end namespace happyhttp
+}//End namespace httplib
 
 
-#endif // HAPPYHTTP_H
+#endif // HTTPLIB_H_
 
 

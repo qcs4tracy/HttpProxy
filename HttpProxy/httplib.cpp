@@ -52,9 +52,9 @@ void BailOnSocketError( const char* context )
 	int e = WSAGetLastError();
 	const char* msg = GetWinsockErrorString( e );
 #else
-	const char* msg = strerror( errno );
+	const char* msg = strerror(errno);
 #endif
-	throw Wobbly( "%s: %s", context, msg );
+	throw Wobbly("%s: %s", context, msg);
 }
 
 
@@ -123,8 +123,8 @@ const char* GetWinsockErrorString( int err )
 
 
 // return true if socket has data waiting to be read
-bool datawaiting( int sock )
-{
+bool datawaiting(int sock) {
+    
 	fd_set fds;
 	FD_ZERO( &fds );
 	FD_SET( sock, &fds );
@@ -135,9 +135,9 @@ bool datawaiting( int sock )
 
 	int r = select( sock+1, &fds, NULL, NULL, &tv);
 	if (r < 0)
-		BailOnSocketError( "select" );
+		BailOnSocketError("select");
 
-	if( FD_ISSET( sock, &fds ) )
+	if(FD_ISSET( sock, &fds ))
 		return true;
 	else
 		return false;
@@ -169,28 +169,35 @@ struct in_addr *atoaddr(const char* address)
 //
 //---------------------------------------------------------------------
 
-
-Wobbly::Wobbly( const char* fmt, ... )
-{
+#define _MSG_LEN 512
+Wobbly::Wobbly(const char* fmt, ...): std::exception() {
+    
 	va_list ap;
+    char msg_[_MSG_LEN];
+    
 	va_start( ap,fmt);
-	int n = vsnprintf( m_Message, MAXLEN, fmt, ap );
+	int n = vsnprintf(msg_, _MSG_LEN, fmt, ap);
 	va_end( ap );
-	if(n==MAXLEN)
-		m_Message[MAXLEN-1] = '\0';
+    
+	if(n == _MSG_LEN)
+		msg_[_MSG_LEN-1] = '\0';
+    
+    _msg = new string(msg_);
 }
 
 // Connection
-Connection::Connection( const char* host, int port ) :
-	m_ResponseBeginCB(0),
-	m_ResponseDataCB(0),
-	m_ResponseCompleteCB(0),
-	m_UserData(0),
-	m_State( IDLE ),
-	m_Host( host ),
-	m_Port( port ),
-	m_Sock(-1)
-{ }
+Connection::Connection(const char* host, int16_t port) :m_ResponseBeginCB(0), m_ResponseDataCB(0),
+	m_ResponseCompleteCB(0), m_UserData(0), m_State( IDLE ),
+	m_Host(host), m_Port( port ) {
+    
+        _sock.connect(host, port);
+}
+    
+Connection::Connection(const string &host, int16_t port): m_Host(host), m_Port(port), m_UserData(0),
+    m_State( IDLE ),m_ResponseBeginCB(0), m_ResponseDataCB(0), m_ResponseCompleteCB(0) {
+    
+        _sock.connect(host, port);
+}
 
 
 void Connection::setcallbacks(ResponseBegin_CB begincb, ResponseData_CB datacb, ResponseComplete_CB completecb, void* userdata ) {
@@ -202,106 +209,25 @@ void Connection::setcallbacks(ResponseBegin_CB begincb, ResponseData_CB datacb, 
     
 
 void Connection::connect() {
-    
-	in_addr* addr = atoaddr(m_Host.c_str());
-    sockaddr_in address;
-    
-	if( !addr )
-		throw Wobbly( "Invalid Network Address" );
-
-	
-	memset( (char*)&address, 0, sizeof(address) );
-	address.sin_family = AF_INET;
-	address.sin_port = htons( m_Port );
-	address.sin_addr.s_addr = addr->s_addr;
-
-	m_Sock = socket( AF_INET, SOCK_STREAM, 0 );
-	if( m_Sock < 0 )
-		BailOnSocketError( "socket()" );
-
-//	printf("Connecting to %s on port %d.\n",inet_ntoa(*addr), port);
-
-	if( ::connect( m_Sock, (sockaddr const*)&address, sizeof(address) ) < 0 )
-		BailOnSocketError( "connect()" );
+    _sock.connect(m_Host, m_Port);
 }
 
 
-void Connection::close()
-{
-#ifdef WIN32
-	if( m_Sock >= 0 )
-		::closesocket( m_Sock );
-#else
-	if( m_Sock >= 0 )
-		::close( m_Sock );
-#endif
-	m_Sock = -1;
-
+void Connection::close() {
+    
+    _sock.~TCPSocket();
 	// discard any incomplete responses
-	while( !m_Outstanding.empty() )
-	{
+	while( !m_Outstanding.empty() ) {
 		delete m_Outstanding.front();
 		m_Outstanding.pop_front();
 	}
 }
 
 
-Connection::~Connection()
-{
-	close();
-}
-
-void Connection::request( const char* method,
-	const char* url,
-	const char* headers[],
-	const unsigned char* body,
-	int bodysize )
-{
-
-	bool gotcontentlength = false;	// already in headers?
-
-	// check headers for content-length
-	// TODO: check for "Host" and "Accept-Encoding" too
-	// and avoid adding them ourselves in putrequest()
-	if(headers)
-	{
-		const char** h = headers;
-		while( *h )
-		{
-			const char* name = *h++;
-			const char* value = *h++;
-			assert( value != 0 );	// name with no value!
-
-			if( 0==_stricmp( name, "content-length" ) )
-				gotcontentlength = true;
-		}
-	}
-
-	putrequest( method, url );
-
-	if(body && !gotcontentlength)
-		addHeader( "Content-Length", bodysize );
-
-	if(headers)
-	{
-		const char** h = headers;
-		while( *h )
-		{
-			const char* name = *h++;
-			const char* value = *h++;
-			addHeader( name, value );
-		}
-	}
-    
-	sendHeader();
-
-	if( body )
-		send( body, bodysize );
-
-}
+Connection::~Connection() { close(); }
 
 
-void Connection::putrequest(const char* method, const char* url) {
+void Connection::putRequest(const char* method, const char* url) {
     
     ostringstream req_line;
     
@@ -310,15 +236,14 @@ void Connection::putrequest(const char* method, const char* url) {
     }
 	m_State = REQ_STARTED;
     req_line << method << " " << url << " " << "HTTP/1.1";
-	m_Buffer.push_back(req_line.str());
+    request_line = req_line.str();
 	addHeader("Host", m_Host.c_str());//required for HTTP1.1
 
 	// don't want any fancy encodings please
 	addHeader("Accept-Encoding", "identity");
 
 	// Push a new response onto the queue
-	Response *r = new Response(method, *this);
-	m_Outstanding.push_back( r );
+	m_Outstanding.push_back(new Response(method, *this));
 }
     
 /*add `field: value` pair to the request Header*/
@@ -327,7 +252,12 @@ void Connection::addHeader(const std::string &header, const std::string &value) 
     if (m_State != REQ_STARTED) {
         throw Wobbly("Invalid State to Add Header Field to Request");
     }
-    m_Buffer.push_back(header + ": " + value);
+    if (headers.count(header) > 0) {
+        headers[header] += ";" + value;
+    } else {
+        headers[header] = value;
+    }
+    
 }
 
     
@@ -339,119 +269,138 @@ void Connection::addHeader(const std::string &header, int numericvalue) {
 void Connection::sendHeader() {
     
     ostringstream request_header;
-    vector< string>::const_iterator it;
+    map<string, string>::const_iterator itr;
     
 	if(m_State != REQ_STARTED)
 		throw Wobbly( "Invalid State to Send Request Header");
-    
-    for(it = m_Buffer.begin(); it != m_Buffer.end(); ++it) {
-		request_header << (*it) + "\r\n";
+
+    request_header << request_line << "\r\n";
+    //append the headers after request line
+    for (itr = headers.begin(); itr != headers.end(); ++itr) {
+        request_header << itr->first << ": " << itr->second << "\r\n";
     }
+    //end of header (field:value) pairs
     request_header << "\r\n";
-	m_Buffer.clear();
-    send((const unsigned char*)request_header.str().c_str(), request_header.str().size());
+    //clear headers
+    headers.clear();
+    _sock.send((const char*)request_header.str().c_str(), (int)request_header.str().size());
+    m_State = REQ_SENT;
+    
+}
+
+    
+
+void Connection::sendRequest() {
+    if (_body && _body_size >0 && headers.count("Content-Length") <= 0) {
+        addHeader("Content-Length", (int)_body_size);
+    }
+    sendHeader();
+    if (_body && _body_size > 0) {
+        _sock.send(_body, _body_size);
+    }
     m_State = IDLE;
 }
+    
+//    
+//    void request(const string &method, const string &url);
+//    void appendBody(const char*body, size_t size);
+void Connection::request(const string &method, const string &url) {
 
-
-void Connection::send(const unsigned char* buf, size_t numbytes)
-{
-	if(m_Sock < 0)
-		connect();
-
-	while( numbytes > 0 )
-	{
-		ssize_t n =
-#ifdef WIN32
-        ::send(m_Sock, (const char*)buf, numbytes, 0);
-#else
-        ::send(m_Sock, buf, numbytes, 0);
-#endif
-        if(n < 0) {
-			BailOnSocketError("send()");
-        }
-		numbytes -= n;
-		buf += n;
-	}
+    putRequest(method.c_str(), url.c_str());
+    
+    if (_body && _body_size >0 && headers.count("Content-Length") <= 0) {
+        addHeader("Content-Length", (int)_body_size);
+    }
+    
+    sendHeader();
+    
+    if (_body) {
+        _sock.send(_body, _body_size);
+    }
+    
+    m_State = IDLE;
+    
 }
+    
+void Connection::addHeaders(const std::map<std::string, std::string> headers) {
 
+    std::map<std::string, std::string>::const_iterator itr = headers.begin();
+    
+    for (; itr != headers.end(); ++itr) {
+        addHeader(itr->first, itr->second);
+    }
+}
+    
 
-void Connection::pump()
-{
-	if( m_Outstanding.empty() )
+void Connection::appendBody(const char *body, size_t size) {
+    
+    _body = body;
+    _body_size = size;
+}
+    
+
+void Connection::pump() {
+    
+#define BUF_SIZE 2048
+    char buf[BUF_SIZE];
+    
+	if(m_Outstanding.empty())
 		return;		// no requests outstanding
-
-	assert( m_Sock > 0 );	// outstanding requests but no connection!
-
-	if( !datawaiting( m_Sock ) )
+    
+	if( !datawaiting(_sock.getSockFd()) )
 		return;				// recv will block
 
-	unsigned char buf[ 2048 ];
-	int a = recv( m_Sock, (char*)buf, sizeof(buf), 0 );
-	if(a < 0)
-		BailOnSocketError( "recv()" );
+    ssize_t nrecv_ = _sock.recv(buf, BUF_SIZE);
+    Response* rsp;
+    
+	if(nrecv_ < 0)
+		BailOnSocketError("recv()");
 
-	if(a == 0)
-	{
-		// connection has closed
+	if(nrecv_ == 0) {// connection has closed
 
-		Response* r = m_Outstanding.front();
-		r->notifyconnectionclosed();
-		assert( r->completed() );
-		delete r;
-		m_Outstanding.pop_front();
-
+		rsp = m_Outstanding.front();
+        m_Outstanding.pop_front();
+		rsp->notifyConnectionClosed();
+		assert(rsp->completed());
+		delete rsp;
 		// any outstanding requests will be discarded
 		close();
-	}
-	else
-	{
-		int used = 0;
-		while( used < a && !m_Outstanding.empty() )
-		{
+        
+	} else {//a > 0
+        
+		size_t nread_ = 0;
+        size_t n = 0;
+		while(nread_ < nrecv_ && !m_Outstanding.empty()) {
 
-			Response* r = m_Outstanding.front();
-			int u = r->pump( &buf[used], a-used );
+			rsp = m_Outstanding.front();
+			n = rsp->pump(&buf[nread_], (nrecv_ - nread_));
 
 			// delete response once completed
-			if( r->completed() )
-			{
-				delete r;
+			if(rsp->completed()) {
+				delete rsp;
 				m_Outstanding.pop_front();
 			}
-			used += u;
+			nread_ += n;
 		}
 
 		// NOTE: will lose bytes if response queue goes empty
 		// (but server shouldn't be sending anything if we don't have
 		// anything outstanding anyway)
-		assert( used == a );	// all bytes should be used up by here.
+		assert(nread_ == nrecv_);	// all bytes should be used up by here.
 	}
 }
 
+    
 //---------------------------------------------------------------------
-//
 // Response
-//
 //---------------------------------------------------------------------
+Response::Response(const char* method, Connection& conn) :m_Connection( conn ),m_State( STATUSLINE ), m_Method( method ),
+    m_Version( 0 ), m_Status(0), m_BytesRead(0), m_Chunked(false),
+	m_ChunkLeft(0), m_Length(-1), m_WillClose(false) { }
 
 
-Response::Response( const char* method, Connection& conn ) :
-	m_Connection( conn ),
-	m_State( STATUSLINE ),
-	m_Method( method ),
-	m_Version( 0 ),
-	m_Status(0),
-	m_BytesRead(0),
-	m_Chunked(false),
-	m_ChunkLeft(0),
-	m_Length(-1),
-	m_WillClose(false)
-{ }
-
-
-const char* Response::getheader( const char* name ) const
-{
+const char* Response::getheader( const char* name ) const {
+    
 	std::string lname( name );
 #ifdef _MSC_VER
 	std::transform( lname.begin(), lname.end(), lname.begin(), tolower );
@@ -485,88 +434,98 @@ const char* Response::getreason() const
 
 
 // Connection has closed
-void Response::notifyconnectionclosed()
-{
-	if( m_State == COMPLETE )
+void Response::notifyConnectionClosed() {
+    
+	if(m_State == COMPLETE)
 		return;
 
 	// eof can be valid...
-	if( m_State == BODY &&
-		!m_Chunked &&
-		m_Length == -1 )
-	{
+	if(m_State == BODY && !m_Chunked && m_Length == -1) {
 		Finish();	// we're all done!
-	}
-	else
-	{
+	} else {
 		throw Wobbly( "Connection closed unexpectedly" );
 	}
 }
 
 
 
-int Response::pump( const unsigned char* data, int datasize )
-{
+size_t Response::pump(const char* data, size_t datasize) {
+    
 	assert( datasize != 0 );
-	int count = datasize;
+	size_t count = datasize;
+    size_t n = 0;
+    const char *lb =  data;
 
-	while( count > 0 && m_State != COMPLETE )
-	{
-		if( m_State == STATUSLINE ||
-			m_State == HEADERS ||
-			m_State == TRAILERS ||
-			m_State == CHUNKLEN ||
-			m_State == CHUNKEND )
-		{
-			// we want to accumulate a line
-			while( count > 0 )
-			{
-				char c = (char)*data++;
-				--count;
-				if( c == '\n' )
-				{
-					// now got a whole line!
-					switch( m_State )
-					{
-						case STATUSLINE:
-							ProcessStatusLine( m_LineBuf );
-							break;
-						case HEADERS:
-							ProcessHeaderLine( m_LineBuf );
-							break;
-						case TRAILERS:
-							ProcessTrailerLine( m_LineBuf );
-							break;
-						case CHUNKLEN:
-							ProcessChunkLenLine( m_LineBuf );
-							break;
-						case CHUNKEND:
-							// just soak up the crlf after body and go to next state
-							assert( m_Chunked == true );
-							m_State = CHUNKLEN;
-							break;
-						default:
-							break;
-					}
-					m_LineBuf.clear();
-					break;		// break out of line accumulation!
-				}
-				else
-				{
-					if( c != '\r' )		// just ignore CR
-						m_LineBuf += c;
-				}
-			}
-		}
-		else if( m_State == BODY )
-		{
-			int bytesused = 0;
-			if( m_Chunked )
-				bytesused = ProcessDataChunked( data, count );
+	while(count > 0 && m_State != COMPLETE) {
+        
+		if(m_State == STATUSLINE || m_State == HEADERS || m_State == TRAILERS
+           || m_State == CHUNKLEN || m_State == CHUNKEND) {
+            
+            while (count > 0) {
+                count--;
+                if (*data == '\r') {//a line end
+                    data++;
+                    if (*data == '\n') {
+                        data++;
+                        count--;
+                        break;
+                    }
+                    n++;
+                } else if(*data++ != '\n') {
+                    n++;
+                } else {
+                    break;
+                }
+            }
+            
+            if (n <= 0) {
+                lb = data;
+                m_LineBuf = "";
+            } else {
+                //copy to line buffer
+                m_LineBuf.assign(lb, n);
+            }
+            
+            
+            switch(m_State) {
+                    
+                case STATUSLINE:
+                    ProcessStatusLine(m_LineBuf);
+                    break;
+                    
+                case HEADERS:
+                    ProcessHeaderLine(m_LineBuf);
+                    break;
+                    
+                case TRAILERS:
+                    ProcessTrailerLine(m_LineBuf);
+                    break;
+                    
+                case CHUNKLEN:
+                    ProcessChunkLenLine(m_LineBuf);
+                    break;
+                    
+                case CHUNKEND:
+                    //just soak up the crlf after body and go to next state
+                    assert(m_Chunked == true);
+                    m_State = CHUNKLEN;
+                    break;
+
+                default:
+                    break;
+            }
+            
+            lb = data;
+            n = 0;
+            
+		} else if(m_State == BODY) {
+			size_t nread_ = 0;
+			if(m_Chunked)
+				nread_ = ProcessDataChunked(data, count);
 			else
-				bytesused = ProcessDataNonChunked( data, count );
-			data += bytesused;
-			count -= bytesused;
+				nread_ = ProcessDataNonChunked(data, count);
+			data += nread_;
+			count -= nread_;
 		}
 	}
 
@@ -576,19 +535,16 @@ int Response::pump( const unsigned char* data, int datasize )
 
 
 
-void Response::ProcessChunkLenLine( std::string const& line )
-{
+void Response::ProcessChunkLenLine(std::string const& line) {
+    
 	// chunklen in hex at beginning of line
-	m_ChunkLeft = strtol( line.c_str(), NULL, 16 );
+    m_ChunkLeft = (int)strtol(line.c_str(), NULL, 16);
 	
-	if( m_ChunkLeft == 0 )
-	{
+	if (m_ChunkLeft == 0) {
 		// got the whole body, now check for trailing headers
 		m_State = TRAILERS;
 		m_HeaderAccum.clear();
-	}
-	else
-	{
+	} else {
 		m_State = BODY;
 	}
 }
@@ -596,24 +552,23 @@ void Response::ProcessChunkLenLine( std::string const& line )
 
 // handle some body data in chunked mode
 // returns number of bytes used.
-int Response::ProcessDataChunked( const unsigned char* data, int count )
-{
-	assert( m_Chunked );
+size_t Response::ProcessDataChunked(const char* data, size_t count) {
 
-	int n = count;
+    assert( m_Chunked );
+
+	size_t n = count;
 	if( n>m_ChunkLeft )
 		n = m_ChunkLeft;
 
 	// invoke callback to pass out the data
 	if( m_Connection.m_ResponseDataCB )
-		(m_Connection.m_ResponseDataCB)( this, m_Connection.m_UserData, data, n );
+		(m_Connection.m_ResponseDataCB)(this, m_Connection.m_UserData, data, n);
 
 	m_BytesRead += n;
 
 	m_ChunkLeft -= n;
-	assert( m_ChunkLeft >= 0);
-	if( m_ChunkLeft == 0 )
-	{
+	assert(m_ChunkLeft >= 0);
+	if(m_ChunkLeft == 0) {
 		// chunk completed! now soak up the trailing CRLF before next chunk
 		m_State = CHUNKEND;
 	}
@@ -622,85 +577,80 @@ int Response::ProcessDataChunked( const unsigned char* data, int count )
 
 // handle some body data in non-chunked mode.
 // returns number of bytes used.
-int Response::ProcessDataNonChunked( const unsigned char* data, int count )
-{
-	int n = count;
-	if( m_Length != -1 )
-	{
+size_t Response::ProcessDataNonChunked(const char* data, size_t count) {
+    
+	size_t n = count;
+	if(m_Length > 0) {
 		// we know how many bytes to expect
 		int remaining = m_Length - m_BytesRead;
-		if( n > remaining )
+		if(n > remaining)
 			n = remaining;
 	}
 
 	// invoke callback to pass out the data
 	if( m_Connection.m_ResponseDataCB )
-		(m_Connection.m_ResponseDataCB)( this, m_Connection.m_UserData, data, n );
+		(m_Connection.m_ResponseDataCB)(this, m_Connection.m_UserData, data, n);
 
 	m_BytesRead += n;
 
 	// Finish if we know we're done. Else we're waiting for connection close.
-	if( m_Length != -1 && m_BytesRead == m_Length )
+	if(m_Length > 0 && m_BytesRead == m_Length )
 		Finish();
 
 	return n;
 }
 
 
-void Response::Finish()
-{
+void Response::Finish() {
+    
 	m_State = COMPLETE;
-
+    
 	// invoke the callback
 	if( m_Connection.m_ResponseCompleteCB )
 		(m_Connection.m_ResponseCompleteCB)( this, m_Connection.m_UserData );
 }
 
 
-void Response::ProcessStatusLine( std::string const& line )
-{
+void Response::ProcessStatusLine(std::string const& line) {
+    
 	const char* p = line.c_str();
 
 	// skip any leading space
-	while( *p && *p == ' ' )
+	while (*p && *p == ' ')
 		++p;
 
 	// get version
-	while( *p && *p != ' ' )
+	while (*p && *p != ' ')
 		m_VersionString += *p++;
-	while( *p && *p == ' ' )
+	while (*p && *p == ' ')
 		++p;
 
 	// get status code
 	std::string status;
-	while( *p && *p != ' ' )
+	while (*p && *p != ' ')
 		status += *p++;
-	while( *p && *p == ' ' )
+	while (*p && *p == ' ')
 		++p;
 
 	// rest of line is reason
-	while( *p )
+	while (*p)
 		m_Reason += *p++;
 
-	m_Status = atoi( status.c_str() );
+	m_Status = atoi(status.c_str());
 	if( m_Status < 100 || m_Status > 999 )
-		throw Wobbly( "BadStatusLine (%s)", line.c_str() );
-
-/*
-	printf( "version: '%s'\n", m_VersionString.c_str() );
-	printf( "status: '%d'\n", m_Status );
-	printf( "reason: '%s'\n", m_Reason.c_str() );
-*/
-
-	if( m_VersionString == "HTTP:/1.0" )
+		throw Wobbly("Bad Status Code: %s", status.c_str());
+    
+    //HTTP protocol version
+    if(m_VersionString == "HTTP:/1.0") {
 		m_Version = 10;
-	else if( 0==m_VersionString.compare( 0,7,"HTTP/1." ) )
+    } else if(!m_VersionString.compare(0,7,"HTTP/1.")) {
 		m_Version = 11;
-	else
-		throw Wobbly( "UnknownProtocol (%s)", m_VersionString.c_str() );
-	// TODO: support for HTTP/0.9
-
+    } else {
+        // TODO: support for HTTP/0.9
+		throw Wobbly("Unsupported Protocol: %s", m_VersionString.c_str());
+    }
 	
+    stat_line = line;
 	// OK, now we expect headers!
 	m_State = HEADERS;
 	m_HeaderAccum.clear();
@@ -708,8 +658,8 @@ void Response::ProcessStatusLine( std::string const& line )
 
 
 // process accumulated header data
-void Response::FlushHeader()
-{
+void Response::FlushHeader() {
+    
 	if( m_HeaderAccum.empty() )
 		return;	// no flushing required
 
@@ -730,41 +680,34 @@ void Response::FlushHeader()
 
 	value = p; // rest of line is value
 
-	m_Headers[ header ] = value;
-//	printf("header: ['%s': '%s']\n", header.c_str(), value.c_str() );	
-
+	m_Headers[header] = value;
 	m_HeaderAccum.clear();
 }
 
 
-void Response::ProcessHeaderLine( std::string const& line )
-{
+void Response::ProcessHeaderLine(std::string const& line) {
+    
 	const char* p = line.c_str();
-	if( line.empty() )
-	{
-		FlushHeader();
-		// end of headers
-
-		// HTTP code 100 handling (we ignore 'em)
-		if( m_Status == CONTINUE )
+	if(line.empty()){
+        FlushHeader();
+        // HTTP code 100 handling (we ignore 'em)
+        if(m_Status == CONTINUE) {
 			m_State = STATUSLINE;	// reset parsing, expect new status line
-		else
-			BeginBody();			// start on body now!
+        } else {
+            BeginBody();			// start on body now!
+        }
 		return;
 	}
 
-	if( isspace(*p) )
-	{
+	if(isspace(*p)){
 		// it's a continuation line - just add it to previous data
 		++p;
 		while( *p && isspace( *p ) )
 			++p;
-
+        
 		m_HeaderAccum += ' ';
 		m_HeaderAccum += p;
-	}
-	else
-	{
+	} else {
 		// begin a new header
 		FlushHeader();
 		m_HeaderAccum = p;
@@ -796,27 +739,25 @@ void Response::BeginBody()
 
 	// using chunked encoding?
 	const char* trenc = getheader( "transfer-encoding" );
-	if( trenc && 0==_stricmp( trenc, "chunked") )
+	if(trenc && !_stricmp(trenc, "chunked"))
 	{
 		m_Chunked = true;
-		m_ChunkLeft = -1;	// unknown
+		m_ChunkLeft = -1;//unknown
 	}
 
 	m_WillClose = CheckClose();
 
 	// length supplied?
-	const char* contentlen = getheader( "content-length" );
-	if( contentlen && !m_Chunked )
-	{
-		m_Length = atoi( contentlen );
+	const char* contentlen = getheader("content-length");
+	if( contentlen && !m_Chunked ){
+		m_Length = atoi(contentlen);
 	}
 
 	// check for various cases where we expect zero-length body
-	if( m_Status == NO_CONTENT ||
+	if(m_Status == NO_CONTENT ||
 		m_Status == NOT_MODIFIED ||
-		( m_Status >= 100 && m_Status < 200 ) ||		// 1xx codes have no body
-		m_Method == "HEAD" )
-	{
+		( m_Status >= 100 && m_Status < 200) ||		// 1xx codes have no body
+		m_Method == "HEAD" ){
 		m_Length = 0;
 	}
 
@@ -826,20 +767,10 @@ void Response::BeginBody()
 	if( !m_WillClose && !m_Chunked && m_Length == -1 )
 		m_WillClose = true;
 
-
-
 	// Invoke the user callback, if any
 	if( m_Connection.m_ResponseBeginCB )
 		(m_Connection.m_ResponseBeginCB)( this, m_Connection.m_UserData );
 
-/*
-	printf("---------BeginBody()--------\n");
-	printf("Length: %d\n", m_Length );
-	printf("WillClose: %d\n", (int)m_WillClose );
-	printf("Chunked: %d\n", (int)m_Chunked );
-	printf("ChunkLeft: %d\n", (int)m_ChunkLeft );
-	printf("----------------------------\n");
-*/
 	// now start reading body data!
 	if( m_Chunked )
 		m_State = CHUNKLEN;
