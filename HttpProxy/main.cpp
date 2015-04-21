@@ -16,6 +16,7 @@
 #include <cstring>
 #include <sstream>
 
+#include "mem_alloc.h"
 #include "message.h"
 
 using namespace zproxy;
@@ -28,34 +29,59 @@ const int RCVBUFSIZE = 1024;
 
 size_t ncount=0;
 
-void OnBegin(const httplib::Response* r, void* userdata) {
+void OnBegin(httplib::Response* r, void* userdata) {
     
     ostringstream oss;
     std::map<string, string>::const_iterator itr;
     TCPSocket *sock = (TCPSocket *) userdata;
     
-    //send the header of the response message
-    oss << r->getStatusLine() << "\r\n";
-    for (itr = r->getHeaders().begin(); itr != r->getHeaders().end(); ++itr) {
-        oss << itr->first << ": " << itr->second << "\r\n";
+    if (!r->isChunked()) {
+        //send the header of the response message
+        oss << r->getStatusLine() << "\r\n";
+        for (itr = r->getHeaders().begin(); itr != r->getHeaders().end(); ++itr) {
+            oss << itr->first << ": " << itr->second << "\r\n";
+        }
+        oss << "\r\n";
+        sock->send(oss.str().data(), oss.str().size());
     }
-    oss << "\r\n";
-    
-    sock->send(oss.str().data(), oss.str().size());
-    
-    ncount = 0;
 }
 
 
-void OnData(const httplib::Response* r, void* userdata, const char* data, size_t n) {
+void OnData(httplib::Response* r, void* userdata, const char* data, size_t n) {
+    
     TCPSocket *sock = (TCPSocket *) userdata;
-    //sock->send(data, n);
-    ncount += n;
+    
+    if(!r->isChunked()) {
+        sock->send(data, n);
+    }
+    
+    r->getInternalBuff()->write(data, n);
+    
 }
 
 
-void OnComplete(const httplib::Response* r, void* userdata) {
-    cout << "Bytes Sent:" << ncount << endl;
+void OnComplete(httplib::Response* r, void* userdata) {
+    
+    TCPSocket *sock = (TCPSocket *) userdata;
+    
+    if (r->isChunked()) {
+        ostringstream oss;
+        std::map<string, string> &hd = r->getHeaders();
+        std::map<string, string>::const_iterator itr;
+        
+        //send the header of the response message
+        oss << r->getStatusLine() << "\r\n";
+        hd.erase("transfer-encoding");
+        hd["content-length"] = r->bodyLen();
+        for (itr = r->getHeaders().begin(); itr != r->getHeaders().end(); ++itr) {
+            oss << itr->first << ": " << itr->second << "\r\n";
+        }
+        oss << "\r\n";
+        
+        r->getInternalBuff()->flushToSock(sock);
+    } else {//unchunked
+    
+    }
     
 }
 
@@ -189,11 +215,9 @@ void HandleTCPClient(TCPSocket *sock) {
     parser.data = (void *)msg;
     httplib::Connection *conn;
     
-    //    //http_parser_execute(&parser, &settings, buff, strlen(buff));
-    //    http_parser_parse_url("www.baidu.com/abc/hash?q=123&p=1", sizeof("www.baidu.com/abc/hash?q=123&p=1"), 1, &url);
-    while ((recvMsgSize = sock->recv(buff, RCVBUFSIZE)) > 0) { // Zero means
-        // end of transmission
-        // Echo message back to client
+    //read the request from the client
+    while ((recvMsgSize = sock->recv(buff, RCVBUFSIZE)) > 0) { // Zero means end of transmission
+        
         http_parser_execute(&parser, &settings, buff, recvMsgSize);
         conn = new httplib::Connection(msg->host, msg->port);
         conn->putRequest("GET", msg->request_path.c_str());
@@ -210,6 +234,7 @@ void HandleTCPClient(TCPSocket *sock) {
         while(conn->outstanding())
             conn->pump();
     }
+    
     // Destructor closes socket
 }
 

@@ -565,8 +565,8 @@ size_t Response::ProcessDataChunked(const char* data, size_t count) {
 		(m_Connection.m_ResponseDataCB)(this, m_Connection.m_UserData, data, n);
 
 	m_BytesRead += n;
-
 	m_ChunkLeft -= n;
+    
 	assert(m_ChunkLeft >= 0);
 	if(m_ChunkLeft == 0) {
 		// chunk completed! now soak up the trailing CRLF before next chunk
@@ -582,7 +582,7 @@ size_t Response::ProcessDataNonChunked(const char* data, size_t count) {
 	size_t n = count;
 	if(m_Length > 0) {
 		// we know how many bytes to expect
-		int remaining = m_Length - m_BytesRead;
+		size_t remaining = m_Length - m_BytesRead;
 		if(n > remaining)
 			n = remaining;
 	}
@@ -594,7 +594,7 @@ size_t Response::ProcessDataNonChunked(const char* data, size_t count) {
 	m_BytesRead += n;
 
 	// Finish if we know we're done. Else we're waiting for connection close.
-	if(m_Length > 0 && m_BytesRead == m_Length )
+	if(m_Length > 0 && m_BytesRead == m_Length)
 		Finish();
 
 	return n;
@@ -730,8 +730,7 @@ void Response::ProcessTrailerLine( std::string const& line )
 // OK, we've now got all the headers read in, so we're ready to start
 // on the body. But we need to see what info we can glean from the headers
 // first...
-void Response::BeginBody()
-{
+void Response::BeginBody() {
 
 	m_Chunked = false;
 	m_Length = -1;	// unknown
@@ -739,8 +738,7 @@ void Response::BeginBody()
 
 	// using chunked encoding?
 	const char* trenc = getheader( "transfer-encoding" );
-	if(trenc && !_stricmp(trenc, "chunked"))
-	{
+	if(trenc && !_stricmp(trenc, "chunked")) {
 		m_Chunked = true;
 		m_ChunkLeft = -1;//unknown
 	}

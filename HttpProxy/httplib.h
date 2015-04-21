@@ -8,6 +8,7 @@
 #include <vector>
 #include <deque>
 #include "socket.h"
+#include "mem_alloc.h"
 
 // forward decl
 struct in_addr;
@@ -21,9 +22,9 @@ void BailOnSocketError(const char* context);
 struct in_addr *atoaddr(const char* address);
 
 
-typedef void (*ResponseBegin_CB)(const Response* r, void* userdata);
-typedef void (*ResponseData_CB)(const Response* r, void* userdata, const char* data, size_t numbytes);
-typedef void (*ResponseComplete_CB)(const Response* r, void* userdata);
+typedef void (*ResponseBegin_CB)(Response* r, void* userdata);
+typedef void (*ResponseData_CB)(Response* r, void* userdata, const char* data, size_t numbytes);
+typedef void (*ResponseComplete_CB)(Response* r, void* userdata);
 
 
 // HTTP status codes
@@ -227,7 +228,13 @@ public:
 	bool willclose() const { return m_WillClose; }
     
     const string &getStatusLine() const { return stat_line; }
-    const std::map<std::string, std::string> &getHeaders() const { return m_Headers; }
+    std::map<std::string, std::string> &getHeaders() { return m_Headers; }
+    
+    const bool isChunked() const { return m_Chunked; }
+    
+    BufferChain *getInternalBuff() { return _bufChain; }
+    
+    size_t bodyLen() { return m_BytesRead; }
 
 protected:
 	// only Connection creates Responses.
@@ -240,6 +247,7 @@ protected:
 
 	// tell response that connection has closed
 	void notifyConnectionClosed();
+    
     
 private:
 	enum {
@@ -265,7 +273,7 @@ private:
 	// header/value pairs
 	std::map<std::string,std::string> m_Headers;
 
-	int		m_BytesRead;		// body bytes read so far
+	size_t	m_BytesRead;		// body bytes read so far
 	bool	m_Chunked;			// response is chunked?
 	int		m_ChunkLeft;		// bytes left in current chunk
 	int		m_Length;			// -1 if unknown
@@ -273,7 +281,10 @@ private:
 
 	std::string m_LineBuf;		// line accumulation for states that want it
 	std::string m_HeaderAccum;	// accumulation buffer for headers
-
+    
+    //buffer for the content
+    BufferChain *_bufChain;
+    
 	void FlushHeader();
 	void ProcessStatusLine(std::string const& line);
 	void ProcessHeaderLine(std::string const& line);

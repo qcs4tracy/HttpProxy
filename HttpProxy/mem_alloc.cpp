@@ -74,28 +74,6 @@ void BuffAllocator::freeBuffer(RawBuffer *buf, bool del) {
 }
 
 
-
-//chain up a list of raw buffers
-//class BufferChain {
-//    
-//public:
-//    
-//    BufferChain(BuffAllocator &alloc = BuffAllocator::getInstance()):numOfBuffs(0), _lastAvail(NULL), _alloc(alloc)  {}
-//    size_t write(const char *data, size_t size);
-//    bool empty() { return numOfBuffs == 0; }
-//    void freeBuffs();
-//    
-//private:
-//    //list of Raw Buffers
-//    std::list<RawBuffer *> _chain;
-//    RawBuffer *_lastAvail;
-//    BuffAllocator &_alloc;
-//    int numOfBuffs;
-//    size_t _totalBytes;
-//};
-
-
-
 void BufferChain::freeBuffs() {
     //if the chain is not empty, free the buffers in it
     if (!_chain.empty()) {
@@ -105,6 +83,23 @@ void BufferChain::freeBuffs() {
         }
     }
 }
+
+
+void BufferChain::flushToSock(TCPSocket *sock) {
+
+    size_t bytesInBuf;
+    if (!empty()) {
+        for(auto buf : _chain) {
+            bytesInBuf = buf->_last - buf->_pos;
+            if (bytesInBuf > 0) {
+                sock->send(buf->_pos, bytesInBuf);
+            }
+        }
+    }
+
+}
+
+
 
 //add a new buffer to the chain
 RawBuffer* BufferChain::addNewBuffer() {
@@ -127,7 +122,7 @@ size_t BufferChain::write(const char *data, size_t size) {
     }
     
     do {
-        nw = buf->write(data, size);
+        nw = buf->write(data, nLeft);
         nLeft -= nw;
         data += nw;
         //if the current buffer is full
