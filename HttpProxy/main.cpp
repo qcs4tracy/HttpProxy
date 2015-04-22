@@ -223,6 +223,11 @@ void HandleTCPClient(TCPSocket *sock) {
         //read the request from the client
         while ((recvMsgSize = sock->recv(buff, RCVBUFSIZE )) > 0) { // Zero means end of transmission
             
+            //reset message to begin parsing HTTP request
+            msg->headers.clear();
+            msg->num_headers = 0;
+            msg->last_header_element = message::NONE;
+        
             http_parser_execute(&parser, &settings, buff, recvMsgSize);
             conn = new httplib::Connection(msg->host, msg->port);
             conn->putRequest("GET", msg->request_path.c_str());

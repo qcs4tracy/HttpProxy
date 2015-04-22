@@ -36,6 +36,7 @@
 		19015C941AE46C560088005C /* socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = socket.cpp; sourceTree = "<group>"; };
 		19015C951AE46C560088005C /* socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = socket.h; sourceTree = "<group>"; };
 		190F117C1AE567A800339EC1 /* message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = message.h; sourceTree = "<group>"; };
+		19431C481AE7EDE800FE201D /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		19A1D7221AE170F800774A27 /* RedBlackTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RedBlackTree.cpp; sourceTree = "<group>"; };
 		19A1D7231AE170F800774A27 /* RedBlackTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RedBlackTree.h; sourceTree = "<group>"; };
 		19AC4EAE1AE699EA00E1103D /* cache.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cache.cpp; sourceTree = "<group>"; };
@@ -80,6 +81,7 @@
 		F1ABCE901AE03DF6000BA342 /* HttpProxy */ = {
 			isa = PBXGroup;
 			children = (
+				19431C481AE7EDE800FE201D /* CMakeLists.txt */,
 				19A1D7221AE170F800774A27 /* RedBlackTree.cpp */,
 				19A1D7231AE170F800774A27 /* RedBlackTree.h */,
 				19015C931AE468040088005C /* misc.h */,

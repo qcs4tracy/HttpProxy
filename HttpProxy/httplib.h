@@ -235,6 +235,8 @@ public:
     BufferChain *getInternalBuff() { return _bufChain; }
     
     size_t bodyLen() { return m_BytesRead; }
+    
+    virtual ~Response();
 
 protected:
 	// only Connection creates Responses.

@@ -391,10 +391,14 @@ void Connection::pump() {
 //---------------------------------------------------------------------
 // Response
 //---------------------------------------------------------------------
-Response::Response(const char* method, Connection& conn) :m_Connection( conn ),m_State( STATUSLINE ), m_Method( method ),
-    m_Version( 0 ), m_Status(0), m_BytesRead(0), m_Chunked(false),
+Response::Response(const char* method, Connection& conn) :m_Connection(conn),m_State(STATUSLINE), m_Method(method), m_Version(0), m_Status(0), m_BytesRead(0), m_Chunked(false),
 	m_ChunkLeft(0), m_Length(-1), m_WillClose(false), _bufChain(new BufferChain) { }
 
+
+Response::~Response() {
+    _bufChain->freeBuffs();
+    delete _bufChain;
+}
 
 const char* Response::getheader( const char* name ) const {
     
