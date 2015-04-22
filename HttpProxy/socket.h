@@ -185,6 +185,8 @@ public:
      *   @exception SocketException thrown if unable to create TCP socket
      */
     TCPSocket() throw(SocketException);
+    void setWillClose(bool yesNo) { willClose_ = yesNo; }
+    bool willClose() { return willClose_; }
     
     /**
      *   Construct a TCP socket with a connection to the given foreign address
@@ -200,6 +202,7 @@ private:
     // Access for TCPServerSocket::accept() connection creation
     friend class TCPServerSocket;
     TCPSocket(int newConnSD);
+    bool willClose_ = false;
 };
 
 /**

@@ -29,12 +29,20 @@ const int RCVBUFSIZE = 1024;
 
 size_t ncount=0;
 
+//callback that is called after the header is completely parsed
 void OnBegin(httplib::Response* r, void* userdata) {
     
     ostringstream oss;
     std::map<string, string>::const_iterator itr;
+    std::map<string, string>& hdr = r->getHeaders();
     TCPSocket *sock = (TCPSocket *) userdata;
-
+    
+    //if this a keep alive connection from downstream, i.e. client to proxy connection
+    if (!sock->willClose()) {
+        hdr["connection"] = "keep-alive";
+    }
+    
+    //if the http packet is not chunked, we can send response along writing the buffer cache
     if (!r->isChunked()) {
         //send the header of the response message
         oss << r->getStatusLine() << "\r\n";
@@ -47,6 +55,7 @@ void OnBegin(httplib::Response* r, void* userdata) {
 }
 
 
+//callback that is called each time some body data comes in
 void OnData(httplib::Response* r, void* userdata, const char* data, size_t n) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
@@ -59,7 +68,7 @@ void OnData(httplib::Response* r, void* userdata, const char* data, size_t n) {
     
 }
 
-
+//callback that is called when the whole response message is parsed
 void OnComplete(httplib::Response* r, void* userdata) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
@@ -148,13 +157,13 @@ int header_value_cb (http_parser *p, const char *buf, size_t len) {
 }
 
 
-static http_parser_settings settings =
-{    .on_message_begin = EMPTY_CB()
+static http_parser_settings settings = {
+    .on_message_begin = EMPTY_CB()
+    ,.on_url = request_url_cb
     ,.on_header_field = header_field_cb
     ,.on_header_value = header_value_cb
-    ,.on_url = request_url_cb
-    ,.on_body = EMPTY_DATA_CB()
     ,.on_headers_complete = EMPTY_DATA_CB()
+    ,.on_body = EMPTY_DATA_CB()
     ,.on_message_complete = EMPTY_CB()
     ,.on_reason = EMPTY_DATA_CB()
     ,.on_chunk_header = EMPTY_CB()
@@ -209,16 +218,16 @@ void HandleTCPClient(TCPSocket *sock) {
     
     // Send received string and receive again until the end of transmission
     char buff[RCVBUFSIZE];
-    
     ssize_t recvMsgSize;
     http_parser parser;
-    http_parser_init(&parser, HTTP_REQUEST);
     struct message *msg = new message;
-    bool willClose = false;
     
+    //initialize the parser
+    http_parser_init(&parser, HTTP_REQUEST);
     parser.data = (void *)msg;
     httplib::Connection *conn;
     
+    //start receive request
     try {
         //read the request from the client
         while ((recvMsgSize = sock->recv(buff, RCVBUFSIZE )) > 0) { // Zero means end of transmission
@@ -235,7 +244,7 @@ void HandleTCPClient(TCPSocket *sock) {
             for (int i = 0; i < msg->headers.size(); ++i) {
                 if (msg->headers[i].first == "Connection") {
                     if (msg->headers[i].second != "keep-alive") {
-                        willClose = true;
+                        sock->setWillClose(true);
                     }
                     continue;
                 }
@@ -263,7 +272,7 @@ void HandleTCPClient(TCPSocket *sock) {
             
             delete conn;
             
-            if (willClose) {
+            if (sock->willClose()) {
                 break;
             }
         }
