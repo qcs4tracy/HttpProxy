@@ -239,9 +239,6 @@ void Connection::putRequest(const char* method, const char* url) {
     request_line = req_line.str();
 	addHeader("Host", m_Host.c_str());//required for HTTP1.1
 
-	// don't want any fancy encodings please
-	addHeader("Accept-Encoding", "identity");
-
 	// Push a new response onto the queue
 	m_Outstanding.push_back(new Response(method, *this));
 }
@@ -291,7 +288,7 @@ void Connection::sendHeader() {
     
 
 void Connection::sendRequest() {
-    if (_body && _body_size >0 && headers.count("Content-Length") <= 0) {
+    if (_body && _body_size >0 && headers.count("content-length") <= 0) {
         addHeader("Content-Length", (int)_body_size);
     }
     sendHeader();
@@ -396,7 +393,7 @@ void Connection::pump() {
 //---------------------------------------------------------------------
 Response::Response(const char* method, Connection& conn) :m_Connection( conn ),m_State( STATUSLINE ), m_Method( method ),
     m_Version( 0 ), m_Status(0), m_BytesRead(0), m_Chunked(false),
-	m_ChunkLeft(0), m_Length(-1), m_WillClose(false) { }
+	m_ChunkLeft(0), m_Length(-1), m_WillClose(false), _bufChain(new BufferChain) { }
 
 
 const char* Response::getheader( const char* name ) const {
@@ -715,13 +712,11 @@ void Response::ProcessHeaderLine(std::string const& line) {
 }
 
 
-void Response::ProcessTrailerLine( std::string const& line )
+void Response::ProcessTrailerLine(std::string const& line)
 {
-	// TODO: handle trailers?
-	// (python httplib doesn't seem to!)
+	// TODO: handle trailers
 	if( line.empty() )
 		Finish();
-
 	// just ignore all the trailers...
 }
 
@@ -737,7 +732,7 @@ void Response::BeginBody() {
 	m_WillClose = false;
 
 	// using chunked encoding?
-	const char* trenc = getheader( "transfer-encoding" );
+	const char* trenc = getheader("transfer-encoding");
 	if(trenc && !_stricmp(trenc, "chunked")) {
 		m_Chunked = true;
 		m_ChunkLeft = -1;//unknown
@@ -767,10 +762,10 @@ void Response::BeginBody() {
 
 	// Invoke the user callback, if any
 	if( m_Connection.m_ResponseBeginCB )
-		(m_Connection.m_ResponseBeginCB)( this, m_Connection.m_UserData );
+		(m_Connection.m_ResponseBeginCB)(this, m_Connection.m_UserData);
 
 	// now start reading body data!
-	if( m_Chunked )
+	if(m_Chunked)
 		m_State = CHUNKLEN;
 	else
 		m_State = BODY;
@@ -778,14 +773,13 @@ void Response::BeginBody() {
 
 
 // return true if we think server will automatically close connection
-bool Response::CheckClose()
-{
-	if( m_Version == 11 )
-	{
+bool Response::CheckClose() {
+    
+	if(m_Version == 11) {
 		// HTTP1.1
 		// the connection stays open unless "connection: close" is specified.
 		const char* conn = getheader( "connection" );
-		if( conn && 0==_stricmp( conn, "close" ) )
+		if(conn && !_stricmp( conn, "close" ))
 			return true;
 		else
 			return false;
@@ -793,15 +787,13 @@ bool Response::CheckClose()
 
 	// Older HTTP
 	// keep-alive header indicates persistant connection 
-	if( getheader( "keep-alive" ) )
+	if(getheader( "keep-alive" ))
 		return false;
 
-	// TODO: some special case handling for Akamai and netscape maybe?
-	return true;
+    return true;
 }
 
 
-
-}	// end namespace happyhttp
+}// end namespace
 
 

@@ -107,6 +107,7 @@ RawBuffer* BufferChain::addNewBuffer() {
     RawBuffer *buf = _alloc.getBuffer();
     _chain.push_back(buf);
     _lastAvail = buf;
+    numOfBuffs++;
     return buf;
 }
 

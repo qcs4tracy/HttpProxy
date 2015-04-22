@@ -18,8 +18,9 @@
 
 struct message {
     
-    const char *name; // for debugging purposes
+    message():num_headers(0), last_header_element(NONE) {}
     
+    const char *name; // for debugging purposes
     const char *raw;
     enum zproxy::http_parser_type type;
     enum zproxy::http_method method;

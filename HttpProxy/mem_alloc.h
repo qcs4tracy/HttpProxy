@@ -84,7 +84,7 @@ class BufferChain {
 
 public:
     
-    BufferChain(BuffAllocator &alloc = BuffAllocator::getInstance()):numOfBuffs(0), _lastAvail(NULL), _alloc(alloc)  {}
+    BufferChain(BuffAllocator &alloc = BuffAllocator::getInstance()):numOfBuffs(0), _lastAvail(NULL), _alloc(alloc), _totalBytes(0)  {}
     size_t write(const char *data, size_t size);
     bool empty() { return numOfBuffs == 0; }
     void freeBuffs();

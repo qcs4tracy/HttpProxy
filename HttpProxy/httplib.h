@@ -238,7 +238,7 @@ public:
 
 protected:
 	// only Connection creates Responses.
-	Response(const char* method, Connection& conn);
+    Response(const char* method, Connection& conn);
 
 	// pump some data in for processing.
 	// Returns the number of bytes used.
