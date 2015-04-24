@@ -15,9 +15,11 @@
 #include <cstdio>
 #include <cstring>
 #include <sstream>
+#include <fstream>
 
 #include "mem_alloc.h"
 #include "message.h"
+#include "blacklist.h"
 
 using namespace zproxy;
 using namespace std;
@@ -30,7 +32,7 @@ const int RCVBUFSIZE = 1024;
 size_t ncount=0;
 
 //callback that is called after the header is completely parsed
-void OnBegin(httplib::Response* r, void* userdata) {
+void onBegin(httplib::Response* r, void* userdata) {
     
     ostringstream oss;
     std::map<string, string>::const_iterator itr;
@@ -56,7 +58,7 @@ void OnBegin(httplib::Response* r, void* userdata) {
 
 
 //callback that is called each time some body data comes in
-void OnData(httplib::Response* r, void* userdata, const char* data, size_t n) {
+void onData(httplib::Response* r, void* userdata, const char* data, size_t n) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
     
@@ -69,7 +71,7 @@ void OnData(httplib::Response* r, void* userdata, const char* data, size_t n) {
 }
 
 //callback that is called when the whole response message is parsed
-void OnComplete(httplib::Response* r, void* userdata) {
+void onComplete(httplib::Response* r, void* userdata) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
     
@@ -130,6 +132,7 @@ int request_url_cb (http_parser *p, const char *buf, size_t len) {
     return 0;
 }
 
+//callback called when encounter header field in the buffer
 int header_field_cb (http_parser *p, const char *buf, size_t len) {
     
     struct message *msg = (struct message *)p->data;
@@ -144,7 +147,7 @@ int header_field_cb (http_parser *p, const char *buf, size_t len) {
     return 0;
 }
 
-
+//callback called when encounter header value in the buffer
 int header_value_cb (http_parser *p, const char *buf, size_t len) {
     
     struct message *msg = (struct message *)p->data;
@@ -156,7 +159,7 @@ int header_value_cb (http_parser *p, const char *buf, size_t len) {
     return 0;
 }
 
-
+//callbacks for http parser
 static http_parser_settings settings = {
     .on_message_begin = EMPTY_CB()
     ,.on_url = request_url_cb
@@ -172,10 +175,49 @@ static http_parser_settings settings = {
 
 void HandleTCPClient(TCPSocket *sock);     // TCP client handling function
 void *ThreadMain(void *arg);               // Main program of a thread
+BlackList blacklist;
+char buff403[1024];
+size_t buff403len;
+
+void load403Html(const string path) {
+    
+    map<string, string> hds;
+    ostringstream oss;
+    std::map<string, string>::const_iterator itr;
+    
+    std::ifstream file(path, std::ios::binary);
+    file.seekg(0, std::ios::end);
+    std::streamsize _size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    hds["Connection"] = "keep-alive";
+    hds["Content-Type"] = "text/html; charset=iso-8859-1";
+    hds["Content-Length"] = to_string(_size);
+    
+    //send the header of the response message
+    oss << DenyResponse << "\r\n";
+    for (itr = hds.begin(); itr != hds.end(); ++itr) {
+        oss << itr->first << ": " << itr->second << "\r\n";
+    }
+    oss << "\r\n";
+    buff403len = oss.str().length();
+    ::memcpy(buff403, oss.str().c_str(), buff403len);
+    
+    if (file.read(buff403+buff403len, _size)) {
+        buff403len += _size;
+    }
+    
+    if (file.is_open()) {
+        file.close();
+    }
+}
 
 int main(int argc, char *argv[]) {
     
     try {
+        //main thread loads black list from configure file
+        blacklist.loadBlackList("blacklist.json");
+        load403Html("403 Forbidden.html");
         TCPServerSocket servSock(5999);   // Socket descriptor for server
         
         for (;;) {      // Run forever
@@ -238,6 +280,14 @@ void HandleTCPClient(TCPSocket *sock) {
             msg->last_header_element = message::NONE;
         
             http_parser_execute(&parser, &settings, buff, recvMsgSize);
+            
+            //handle black list here, can be implemented as a filter chain or plugin.
+            //TODO: refactor later
+            if(blacklist.isBlocked(msg->host)) {// if the site is block
+                sock->send(buff403, buff403len);
+                continue;
+            }
+            
             conn = new httplib::Connection(msg->host, msg->port);
             conn->putRequest("GET", msg->request_path.c_str());
             
@@ -258,7 +308,7 @@ void HandleTCPClient(TCPSocket *sock) {
             conn->addHeader("Connection", "close");
             
             //change callbacks for response data
-            conn->setcallbacks(OnBegin, OnData, OnComplete, (void *)sock);
+            conn->setcallbacks(onBegin, onData, onComplete, (void *)sock);
             conn->sendRequest();
 
             try {

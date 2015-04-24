@@ -1,0 +1,8 @@
+{
+    "_comment": "this document contains all black list websites!",
+    "blacklist": ["www.facebook.com",
+                  "www.hulu.com",
+                  "www.youtube.com",
+                  "www.virus.com"
+                  ]
+}

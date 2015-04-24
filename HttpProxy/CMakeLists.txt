@@ -6,6 +6,6 @@ include_directories(/usr/include/)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "./")
 
-add_executable(http_proxy main.cpp socket.h socket.cpp message.h mem_alloc.h mem_alloc.cpp http_parser.h http_parser_cpp.cpp httplib.h httplib.cpp)
+add_executable(http_proxy main.cpp socket.h socket.cpp message.h mem_alloc.h mem_alloc.cpp http_parser.h http_parser_cpp.cpp httplib.h httplib.cpp blacklist.h blacklist.cpp)
 target_link_libraries(http_proxy pthread)
 
