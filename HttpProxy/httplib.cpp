@@ -450,7 +450,7 @@ void Response::notifyConnectionClosed() {
 
 
 
-size_t Response::pump(const char* data, size_t datasize) {
+size_t Response::pump(char* data, size_t datasize) {
     
 	assert( datasize != 0 );
 	size_t count = datasize;
@@ -553,7 +553,7 @@ void Response::ProcessChunkLenLine(std::string const& line) {
 
 // handle some body data in chunked mode
 // returns number of bytes used.
-size_t Response::ProcessDataChunked(const char* data, size_t count) {
+size_t Response::ProcessDataChunked(char* data, size_t count) {
 
     assert( m_Chunked );
 
@@ -578,7 +578,7 @@ size_t Response::ProcessDataChunked(const char* data, size_t count) {
 
 // handle some body data in non-chunked mode.
 // returns number of bytes used.
-size_t Response::ProcessDataNonChunked(const char* data, size_t count) {
+size_t Response::ProcessDataNonChunked(char* data, size_t count) {
     
 	size_t n = count;
 	if(m_Length > 0) {

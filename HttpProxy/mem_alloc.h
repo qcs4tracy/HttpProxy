@@ -15,7 +15,6 @@
 
 class BuffAllocator;
 class BufferChain;
-class WordFilter;
 
 class RawBuffer {
 
@@ -89,7 +88,7 @@ public:
     size_t write(const char *data, size_t size);
     bool empty() { return numOfBuffs == 0; }
     void freeBuffs();
-    void flushToSock(TCPSocket *sock, WordFilter &filter);
+    void flushToSock(TCPSocket *sock);
     
 private:
     RawBuffer *addNewBuffer();

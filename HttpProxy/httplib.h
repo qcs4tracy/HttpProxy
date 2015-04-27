@@ -248,7 +248,7 @@ protected:
 	// pump some data in for processing.
 	// Returns the number of bytes used.
 	// Will always return 0 when response is complete.
-	size_t pump(const char* data, size_t datasize);
+	size_t pump(char* data, size_t datasize);
 
 	// tell response that connection has closed
 	void notifyConnectionClosed();
@@ -296,8 +296,8 @@ private:
 	void ProcessTrailerLine(std::string const& line);
 	void ProcessChunkLenLine(std::string const& line);
 
-	size_t ProcessDataChunked(const char* data, size_t count );
-	size_t ProcessDataNonChunked(const char* data, size_t count );
+	size_t ProcessDataChunked(char* data, size_t count );
+	size_t ProcessDataNonChunked(char* data, size_t count );
 
 	void BeginBody();
 	bool CheckClose();

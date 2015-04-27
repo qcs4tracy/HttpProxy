@@ -86,14 +86,13 @@ void BufferChain::freeBuffs() {
 }
 
 
-void BufferChain::flushToSock(TCPSocket *sock, WordFilter &filter) {
+void BufferChain::flushToSock(TCPSocket *sock) {
 
     size_t bytesInBuf;
     if (!empty()) {
         for(auto buf : _chain) {
             bytesInBuf = buf->_last - buf->_pos;
             if (bytesInBuf > 0) {
-                filter.filter(buf->_pos, bytesInBuf);
                 sock->send(buf->_pos, bytesInBuf);
             }
         }

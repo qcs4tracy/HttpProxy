@@ -71,9 +71,9 @@ void onBegin(httplib::Response* r, void* userdata) {
 void onData(httplib::Response* r, void* userdata, char* data, size_t n) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
+    filter.filter(data, n);
     
     if(!r->isChunked()) {
-        filter.filter(data, n);
         sock->send(data, n);
     }
     
@@ -100,7 +100,7 @@ void onComplete(httplib::Response* r, void* userdata) {
         }
         oss << "\r\n";
         sock->send(oss.str().data(), oss.str().size());
-        r->getInternalBuff()->flushToSock(sock, filter);
+        r->getInternalBuff()->flushToSock(sock);
     } //else {//unchunked has been sent already//}
     
 }

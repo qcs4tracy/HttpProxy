@@ -1249,8 +1249,8 @@ protected:
  */
 template < typename T,
 typename V,
-typename Cmp = std::less<T>,
-typename Items = SetItems<T, V, Cmp> > class Trie
+typename Cmp,
+typename Items> class Trie
 {
 public:
     typedef typename Node<T, V, Cmp, Items>::Iterator Iterator;
