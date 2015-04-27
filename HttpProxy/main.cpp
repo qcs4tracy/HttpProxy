@@ -3,7 +3,7 @@
 //  HttpProxy
 //
 //  Created by QiuChusheng on 15/4/16.
-//  Copyright (c) 2015年 QiuChusheng. All rights reserved.
+//  Copyright (c) 2015 QiuChusheng. All rights reserved.
 //
 
 #include "socket.h"  // For Socket, ServerSocket, and SocketException
@@ -20,16 +20,26 @@
 #include "mem_alloc.h"
 #include "message.h"
 #include "blacklist.h"
+#include "filter/wordfilter.h"
 
 using namespace zproxy;
 using namespace std;
 const int RCVBUFSIZE = 1024;
 
+//forward declarations
+void HandleTCPClient(TCPSocket *sock);     // TCP client handling function
+void *ThreadMain(void *arg);               // Main program of a thread
+BlackList blacklist;
+char buff403[1024];
+size_t buff403len;
+
+//word filter
+WordFilter filter;
+
+
 #ifdef WIN32
 #include <winsock2.h>
 #endif // WIN32
-
-size_t ncount=0;
 
 //callback that is called after the header is completely parsed
 void onBegin(httplib::Response* r, void* userdata) {
@@ -58,11 +68,12 @@ void onBegin(httplib::Response* r, void* userdata) {
 
 
 //callback that is called each time some body data comes in
-void onData(httplib::Response* r, void* userdata, const char* data, size_t n) {
+void onData(httplib::Response* r, void* userdata, char* data, size_t n) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
     
     if(!r->isChunked()) {
+        filter.filter(data, n);
         sock->send(data, n);
     }
     
@@ -89,10 +100,8 @@ void onComplete(httplib::Response* r, void* userdata) {
         }
         oss << "\r\n";
         sock->send(oss.str().data(), oss.str().size());
-        r->getInternalBuff()->flushToSock(sock);
-    } else {//unchunked
-    
-    }
+        r->getInternalBuff()->flushToSock(sock, filter);
+    } //else {//unchunked has been sent already//}
     
 }
 
@@ -131,6 +140,7 @@ int request_url_cb (http_parser *p, const char *buf, size_t len) {
     
     return 0;
 }
+
 
 //callback called when encounter header field in the buffer
 int header_field_cb (http_parser *p, const char *buf, size_t len) {
@@ -173,11 +183,6 @@ static http_parser_settings settings = {
     ,.on_chunk_complete = EMPTY_CB()
 };
 
-void HandleTCPClient(TCPSocket *sock);     // TCP client handling function
-void *ThreadMain(void *arg);               // Main program of a thread
-BlackList blacklist;
-char buff403[1024];
-size_t buff403len;
 
 void load403Html(const string path) {
     
@@ -218,6 +223,7 @@ int main(int argc, char *argv[]) {
         //main thread loads black list from configure file
         blacklist.loadBlackList("blacklist.json");
         load403Html("403 Forbidden.html");
+        filter.loadWords("insults.json");
         TCPServerSocket servSock(5999);   // Socket descriptor for server
         
         for (;;) {      // Run forever

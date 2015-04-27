@@ -23,7 +23,7 @@ struct in_addr *atoaddr(const char* address);
 
 
 typedef void (*ResponseBegin_CB)(Response* r, void* userdata);
-typedef void (*ResponseData_CB)(Response* r, void* userdata, const char* data, size_t numbytes);
+typedef void (*ResponseData_CB)(Response* r, void* userdata, char* data, size_t numbytes);
 typedef void (*ResponseComplete_CB)(Response* r, void* userdata);
 
 

@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		19015C921AE462000088005C /* mem_alloc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19015C901AE462000088005C /* mem_alloc.cpp */; };
 		19015C961AE46C560088005C /* socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19015C941AE46C560088005C /* socket.cpp */; };
+		19852B951AEDA86D007102E0 /* porter2_stemmer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19852B901AEDA86D007102E0 /* porter2_stemmer.cpp */; };
+		19852B961AEDA86D007102E0 /* wordfilter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19852B931AEDA86D007102E0 /* wordfilter.cpp */; };
 		19A1D7251AE170F800774A27 /* RedBlackTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19A1D7221AE170F800774A27 /* RedBlackTree.cpp */; };
 		19AC4EB01AE699EA00E1103D /* cache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19AC4EAE1AE699EA00E1103D /* cache.cpp */; };
 		19F8762A1AE9D19500376622 /* jsoncpp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 19F876291AE9D19500376622 /* jsoncpp.cpp */; };
@@ -39,6 +41,12 @@
 		19015C951AE46C560088005C /* socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = socket.h; sourceTree = "<group>"; };
 		190F117C1AE567A800339EC1 /* message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = message.h; sourceTree = "<group>"; };
 		19431C481AE7EDE800FE201D /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
+		19852B901AEDA86D007102E0 /* porter2_stemmer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = porter2_stemmer.cpp; sourceTree = "<group>"; };
+		19852B911AEDA86D007102E0 /* porter2_stemmer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = porter2_stemmer.h; sourceTree = "<group>"; };
+		19852B921AEDA86D007102E0 /* trie.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = trie.h; sourceTree = "<group>"; };
+		19852B931AEDA86D007102E0 /* wordfilter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wordfilter.cpp; sourceTree = "<group>"; };
+		19852B941AEDA86D007102E0 /* wordfilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = wordfilter.h; sourceTree = "<group>"; };
+		19852B981AEDAC18007102E0 /* insults.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = insults.json; sourceTree = "<group>"; };
 		19A1D7221AE170F800774A27 /* RedBlackTree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RedBlackTree.cpp; sourceTree = "<group>"; };
 		19A1D7231AE170F800774A27 /* RedBlackTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RedBlackTree.h; sourceTree = "<group>"; };
 		19AC4EAE1AE699EA00E1103D /* cache.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cache.cpp; sourceTree = "<group>"; };
@@ -70,6 +78,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		19852B8F1AEDA86D007102E0 /* filter */ = {
+			isa = PBXGroup;
+			children = (
+				19852B901AEDA86D007102E0 /* porter2_stemmer.cpp */,
+				19852B911AEDA86D007102E0 /* porter2_stemmer.h */,
+				19852B921AEDA86D007102E0 /* trie.h */,
+				19852B931AEDA86D007102E0 /* wordfilter.cpp */,
+				19852B941AEDA86D007102E0 /* wordfilter.h */,
+			);
+			path = filter;
+			sourceTree = "<group>";
+		};
 		F1ABCE851AE03DF6000BA342 = {
 			isa = PBXGroup;
 			children = (
@@ -90,8 +110,10 @@
 			isa = PBXGroup;
 			children = (
 				19F876281AE9D19500376622 /* json */,
-				19431C481AE7EDE800FE201D /* CMakeLists.txt */,
+				19852B8F1AEDA86D007102E0 /* filter */,
 				19F876331AE9E00400376622 /* 403 Forbidden.html */,
+				19431C481AE7EDE800FE201D /* CMakeLists.txt */,
+				19852B981AEDAC18007102E0 /* insults.json */,
 				19F876311AE9D8F500376622 /* blacklist.json */,
 				19F876291AE9D19500376622 /* jsoncpp.cpp */,
 				19A1D7221AE170F800774A27 /* RedBlackTree.cpp */,
@@ -174,6 +196,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				19F8762A1AE9D19500376622 /* jsoncpp.cpp in Sources */,
+				19852B951AEDA86D007102E0 /* porter2_stemmer.cpp in Sources */,
 				F1ABCEA01AE06B5C000BA342 /* httplib.cpp in Sources */,
 				F1ABCE9A1AE03E03000BA342 /* http_parser_cpp.cpp in Sources */,
 				19A1D7251AE170F800774A27 /* RedBlackTree.cpp in Sources */,
@@ -181,6 +204,7 @@
 				19F8762D1AE9D1BC00376622 /* blacklist.cpp in Sources */,
 				F1ABCEA31AE0A2AF000BA342 /* md5.cpp in Sources */,
 				F1ABCE921AE03DF6000BA342 /* main.cpp in Sources */,
+				19852B961AEDA86D007102E0 /* wordfilter.cpp in Sources */,
 				19AC4EB01AE699EA00E1103D /* cache.cpp in Sources */,
 				19015C961AE46C560088005C /* socket.cpp in Sources */,
 			);
