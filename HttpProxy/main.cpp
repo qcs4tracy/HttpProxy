@@ -222,7 +222,9 @@ int main(int argc, char *argv[]) {
     try {
         //main thread loads black list from configure file
         blacklist.loadBlackList("blacklist.json");
+        //pre-load the 403 page
         load403Html("403 Forbidden.html");
+        //pre-load the insult words that needs to be filtered out
         filter.loadWords("insults.json");
         TCPServerSocket servSock(5999);   // Socket descriptor for server
         
@@ -297,16 +299,26 @@ void HandleTCPClient(TCPSocket *sock) {
             conn = new httplib::Connection(msg->host, msg->port);
             conn->putRequest("GET", msg->request_path.c_str());
             
+            //process the headers of the request that will be used to access original server
             for (int i = 0; i < msg->headers.size(); ++i) {
+                
+                //if it is keep-alive connection
                 if (msg->headers[i].first == "Connection") {
                     if (msg->headers[i].second != "keep-alive") {
                         sock->setWillClose(true);
                     }
                     continue;
                 }
-                if (msg->headers[i].first == "Host") {
+                
+                //the proxy Host should be strip out
+                /*Accept-Encoding: gzip ...  should be strip out because we don't wanna add a large gzip
+                  library to our program to uncompress data, filter words and then compress it before send
+                  to the browser. Ignore this field.*/
+                if (msg->headers[i].first == "Host" || msg->headers[i].first == "Accept-Encoding") {
                     continue;
                 }
+                
+                //add the header field-value pair to request headers to the original server
                 conn->addHeader(msg->headers[i].first, msg->headers[i].second);
             }
             
