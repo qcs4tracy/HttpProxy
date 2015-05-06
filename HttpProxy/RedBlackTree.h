@@ -68,10 +68,10 @@ public:
   RedBlackTreeNode * Insert(RedBlackEntry *);
   RedBlackTreeNode * GetPredecessorOf(RedBlackTreeNode *) const;
   RedBlackTreeNode * GetSuccessorOf(RedBlackTreeNode *) const;
-  RedBlackTreeNode * Search(int key);
+  //RedBlackTreeNode * Search(int key);
   /*duplicate key is supported*/
-  std::vector<RedBlackTreeNode *> * Enumerate(int low, int high) ;
-  std::vector<RedBlackTreeNode *> * Find(int key) { return Enumerate(key, key); };
+  std::vector<RedBlackTreeNode *> * Enumerate(ulong low, ulong high) ;
+  std::vector<RedBlackTreeNode *> * Find(ulong key) { return Enumerate(key, key); };
   void CheckAssumptions() const;
 protected:
   /*  A sentinel is used for root and for nil.  These sentinels are */

@@ -593,8 +593,8 @@ RedBlackEntry * RedBlackTree::DeleteNode(RedBlackTreeNode * z){
 /**/
 /***********************************************************************/
 
-vector<RedBlackTreeNode *> * RedBlackTree::Enumerate(int low,
-							    int high)  {
+vector<RedBlackTreeNode *> * RedBlackTree::Enumerate(ulong low,
+							    ulong high)  {
   vector<RedBlackTreeNode *> * enumResultStack =
     new vector<RedBlackTreeNode *>();
 

@@ -89,6 +89,8 @@ public:
     bool empty() { return numOfBuffs == 0; }
     void freeBuffs();
     void flushToSock(TCPSocket *sock);
+    void flushToStream(ostream &ost);
+    size_t size() { return _totalBytes; }
     
 private:
     RawBuffer *addNewBuffer();

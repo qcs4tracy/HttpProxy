@@ -8,6 +8,7 @@
 
 #include "mem_alloc.h"
 #include "filter/wordfilter.h"
+#include <ostream>
 
 RawBuffer::RawBuffer(char *buf, size_t size):_start(buf), _pos(buf), _last(buf),
                                              _end(buf+size), _size(size), _avail(size) {}
@@ -98,6 +99,22 @@ void BufferChain::flushToSock(TCPSocket *sock) {
         }
     }
 
+}
+
+
+void BufferChain::flushToStream(ostream &ost) {
+    
+    size_t bytesInBuf;
+    if (!empty()) {
+        for(auto buf : _chain) {
+            bytesInBuf = buf->_last - buf->_pos;
+            if (bytesInBuf > 0) {
+                ost.write(buf->_pos, bytesInBuf);
+            }
+        }
+    }
+    ost.flush();
+    
 }
 
 

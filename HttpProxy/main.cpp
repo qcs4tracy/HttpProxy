@@ -17,10 +17,13 @@
 #include <sstream>
 #include <fstream>
 
+#include <sys/stat.h>
+
 #include "mem_alloc.h"
 #include "message.h"
 #include "blacklist.h"
 #include "filter/wordfilter.h"
+#include "cache.h"
 
 using namespace zproxy;
 using namespace std;
@@ -36,10 +39,16 @@ size_t buff403len;
 //word filter
 WordFilter filter;
 
+//CACHE
+LruCache cache;
 
 #ifdef WIN32
 #include <winsock2.h>
 #endif // WIN32
+
+
+#define CACHE_HIT "X-My-Cache:HIT"
+#define CACHE_MISS "X-My-Cache:MISS"
 
 //callback that is called after the header is completely parsed
 void onBegin(httplib::Response* r, void* userdata) {
@@ -61,8 +70,14 @@ void onBegin(httplib::Response* r, void* userdata) {
         for (itr = r->getHeaders().begin(); itr != r->getHeaders().end(); ++itr) {
             oss << itr->first << ": " << itr->second << "\r\n";
         }
+        if (r->hit) {
+            oss << CACHE_HIT << "\r\n";
+        } else {
+            oss << CACHE_MISS << "\r\n";
+        }
         oss << "\r\n";
         sock->send(oss.str().data(), oss.str().size());
+        
     }
 }
 
@@ -85,23 +100,45 @@ void onData(httplib::Response* r, void* userdata, char* data, size_t n) {
 void onComplete(httplib::Response* r, void* userdata) {
     
     TCPSocket *sock = (TCPSocket *) userdata;
+    ostringstream oss;
+    std::map<string, string> &hd = r->getHeaders();
+    std::map<string, string>::const_iterator itr;
     
+    //send the header of the response message
+    oss << r->getStatusLine() << "\r\n";
+    hd.erase("transfer-encoding");
+    hd["content-length"] = to_string(r->bodyLen());
+    for (itr = hd.begin(); itr != hd.end(); ++itr) {
+        oss << itr->first << ": " << itr->second << "\r\n";
+    }
+    
+    if (r->hit) {
+        oss << CACHE_HIT << "\r\n";
+    } else {
+        oss << CACHE_MISS << "\r\n";
+    }
+    
+    oss << "\r\n";
+    //is chunked body
     if (r->isChunked()) {
-        ostringstream oss;
-        std::map<string, string> &hd = r->getHeaders();
-        std::map<string, string>::const_iterator itr;
-        
-        //send the header of the response message
-        oss << r->getStatusLine() << "\r\n";
-        hd.erase("transfer-encoding");
-        hd["content-length"] = to_string(r->bodyLen());
-        for (itr = hd.begin(); itr != hd.end(); ++itr) {
-            oss << itr->first << ": " << itr->second << "\r\n";
-        }
-        oss << "\r\n";
         sock->send(oss.str().data(), oss.str().size());
         r->getInternalBuff()->flushToSock(sock);
     } //else {//unchunked has been sent already//}
+    
+    //not in buffer, flush to disk
+    if (!r->hit) {
+        string fn;
+        cache.addNew(r->url, r->getInternalBuff());
+        LruCache::cacheName(r->url, fn);
+        fn = "cache/" + fn;
+        ofstream of(fn);
+        of.write(oss.str().data(), oss.str().size());
+        r->getInternalBuff()->flushToStream(of);
+        //close file
+        if (of.is_open()) {
+            of.close();
+        }
+    }
     
 }
 
@@ -219,14 +256,45 @@ void load403Html(const string path) {
 
 int main(int argc, char *argv[]) {
     
+    int port;
+    
     try {
+        
+        if (argc < 2) {
+            cout << "Usage: ./http_proxy [portno]" << endl;
+            exit(255);
+        }
+        
+        port = ::atoi(argv[1]);
+        if (port <= 0) {
+            cout << "Invalid port No. provided"<< endl;
+            exit(255);
+        }
+        
         //main thread loads black list from configure file
         blacklist.loadBlackList("blacklist.json");
         //pre-load the 403 page
         load403Html("403 Forbidden.html");
         //pre-load the insult words that needs to be filtered out
         filter.loadWords("insults.json");
-        TCPServerSocket servSock(5999);   // Socket descriptor for server
+        
+        struct stat statbuf;
+        //check and create directory for storing caches
+        if (stat("cache", &statbuf) != -1) {
+            if (!S_ISDIR(statbuf.st_mode)) {
+                if (mkdir("cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
+                    cerr << "error create cache directory!" << endl;
+                    exit(255);
+                }
+            }
+        } else {
+            if (mkdir("cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
+                cerr << "error create cache directory!" << endl;
+                exit(255);
+            }
+        }
+        
+        TCPServerSocket servSock((unsigned int)port);   // Socket descriptor for server
         
         for (;;) {      // Run forever
             // Create separate memory for client argument
@@ -247,7 +315,6 @@ int main(int argc, char *argv[]) {
     // NOT REACHED
     return 0;
 }
-
 
 
 // TCP client handling function
@@ -296,8 +363,35 @@ void HandleTCPClient(TCPSocket *sock) {
                 continue;
             }
             
+            bool hit = false;
+            //cache check goes here
+            if (cache.search(msg->request_url) == NULL) {
+                string fn;
+                LruCache::cacheName(msg->request_url, fn);
+                fn = "cache/" + fn;
+                ifstream fs(fn, ifstream::binary);
+                if (fs.good()) {
+//                    uint hd_sz, n_;
+//                    fs >> hd_sz;
+//                    //send header
+//                    do {
+//                        n_ = hd_sz > RCVBUFSIZE? RCVBUFSIZE: hd_sz;
+//                        fs.read(buff, n_);
+//                        sock->send(buff, n_);
+//                        hd_sz -= n_;
+//                    } while (hd_sz > 0);
+//                    sock->send(CACHE_HDLINE, sizeof(CACHE_HDLINE));
+                    hit = true;
+                }
+                fs.close();
+            } else {
+                hit = true;
+            }
+            
             conn = new httplib::Connection(msg->host, msg->port);
-            conn->putRequest("GET", msg->request_path.c_str());
+            httplib::Response * rsp = conn->putRequest("GET", msg->request_path.c_str());
+            rsp->hit = hit;
+            rsp->url = msg->request_url;
             
             //process the headers of the request that will be used to access original server
             for (int i = 0; i < msg->headers.size(); ++i) {

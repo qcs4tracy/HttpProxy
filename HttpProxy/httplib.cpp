@@ -227,7 +227,7 @@ void Connection::close() {
 Connection::~Connection() { close(); }
 
 
-void Connection::putRequest(const char* method, const char* url) {
+Response* Connection::putRequest(const char* method, const char* url) {
     
     ostringstream req_line;
     
@@ -240,7 +240,9 @@ void Connection::putRequest(const char* method, const char* url) {
 	addHeader("Host", m_Host.c_str());//required for HTTP1.1
 
 	// Push a new response onto the queue
-	m_Outstanding.push_back(new Response(method, *this));
+    Response *r = new Response(method, *this);
+	m_Outstanding.push_back(r);
+    return r;
 }
     
 /*add `field: value` pair to the request Header*/

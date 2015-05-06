@@ -12,7 +12,7 @@
 typedef unsigned long ulong;
 typedef unsigned int uint;
 
-static inline ulong inline_hash_func(char *arKey, uint nKeyLength)
+static inline ulong inline_hash_func(const char *arKey, uint nKeyLength)
 {
      ulong hash = 5381;
     

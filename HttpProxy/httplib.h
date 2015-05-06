@@ -173,7 +173,7 @@ public:
 	// begin request
 	// method is "GET", "POST" etc...
 	// url is only path part: eg  "/index.html"
-	void putRequest(const char* method, const char* url);
+	Response *putRequest(const char* method, const char* url);
 
 	// Add a header to the request (call after putrequest() )
 	void addHeader(const std::string &header, int numericvalue );	// alternate version
@@ -240,6 +240,9 @@ public:
     size_t bodyLen() { return m_BytesRead; }
     
     virtual ~Response();
+    
+    bool hit;
+    std::string url;
 
 protected:
 	// only Connection creates Responses.

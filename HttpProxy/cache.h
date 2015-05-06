@@ -12,7 +12,6 @@
 #include "misc.h"
 #include "RedBlackTree.h"
 #include <iostream>
-#include <memory.h>
 #include <list>
 
 
@@ -23,10 +22,11 @@ class CacheNode: public RedBlackEntry {
 
 public:
     enum Status { Release, Mark };
-    CacheNode():_stat(Release),_tag(-1),_obj(NULL){}
-    CacheNode(size_t obj_sz, void *obj): _stat(Mark), _sz(obj_sz), _obj(obj) {}
+    CacheNode(ulong tag_ = -1, void *obj_ = 0, size_t obj_sz_ = 0, Status st = Release):_stat(st),_tag(tag_), _obj(obj_),_sz(obj_sz_) { }
+    
     virtual ~CacheNode() {}
-    int _stat;    /* node status */
+    
+    Status _stat;    /* node status */
     size_t _sz;
     ulong _tag;   /* object id# */
     void * _obj;  /* -> user object storage */
@@ -46,34 +46,36 @@ protected:
 #endif
     
     int _nodes;     /* # CacheNodes allocated */
-    
-    //list of CacheNodes
-    std::list<CacheNode *> _nodesList;
-    
+
     //Lru Node
     CacheNode *Lru;
     
     //root for the red balck tree of cache nodes
     RedBlackTree root;
     
-    //Cache Node allocator
-    std::allocator<CacheNode> allocator;
+    //LRU list
+    std::list<CacheNode *> lruList;
     
     //make the node LRU
-    CacheNode *make_lru(CacheNode *);
+    void make_lru(CacheNode * n);
     
-    //hook to clean the to-be-expelled cache node
-    virtual void Proc(const CacheNode *) = 0;
-    
-public:
-    LruCache(int nn,int objsz);
-    virtual ~LruCache ();
     LruCache( const LruCache& );  //undefined
     LruCache& operator= (const LruCache&); //undefined
-    CacheNode *search( ulong tag );
-    CacheNode *addNew( ulong tag, size_t obj_sz );
-    CacheNode *mark( ulong tag, CacheNode::Status stat);
-    void Flush();
+    
+    //hook to clean the to-be-expelled cache node
+    //virtual void Proc(const CacheNode *);
+    
+public:
+    LruCache(int nn = 0);
+    virtual ~LruCache () {}
+    static void cacheName(const std::string &path, std::string &ret);
+    
+    //CacheNode *search(ulong tag );
+    CacheNode *search(const std::string &key);
+    //CacheNode *addNew(ulong tag, size_t obj_sz );
+    CacheNode *addNew(const std::string &digest, void *obj);
+    //CacheNode *mark( ulong tag, CacheNode::Status stat);
+    //void Flush();
     
     
 #if defined( TESTING )
